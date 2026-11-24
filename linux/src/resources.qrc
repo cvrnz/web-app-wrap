@@ -1,0 +1,14 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/AppRoot.qml</file>
+        <file>qml/BrowserWindow.qml</file>
+        <file>qml/BrowserTab.qml</file>
+        <file>qml/FindInPage.qml</file>
+        <file>qml/AllowedSitesDialog.qml</file>
+        <file>qml/ShortcutsOverlay.qml</file>
+        <file>qml/MakerWindow.qml</file>
+        <file>qml/AppEditor.qml</file>
+        <file>qml/ColorSwatch.qml</file>
+        <file>i18n/en.json</file>
+    </qresource>
+</RCC>

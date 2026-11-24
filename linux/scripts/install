@@ -1,0 +1,8 @@
+#!/bin/sh
+# Builds the Arch package and installs it (makepkg asks for your password through sudo).
+set -eu
+
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+"$ROOT/scripts/build"
+cd "$ROOT/pkgbuild"
+exec makepkg -fsi "$@"

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="14" fill="#FFD60A"/>
+  <!-- A window with two tabs. -->
+  <rect x="12" y="17" width="40" height="31" rx="4" fill="none" stroke="#1C1C1C" stroke-width="3.5"/>
+  <path d="M12 26 H52" stroke="#1C1C1C" stroke-width="3.5"/>
+  <rect x="15.5" y="20" width="13" height="4" rx="1" fill="#1C1C1C"/>
+  <path d="M32 20.5 V24" stroke="#1C1C1C" stroke-width="2" stroke-linecap="round"/>
+</svg>

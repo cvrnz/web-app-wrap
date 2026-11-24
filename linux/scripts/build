@@ -1,0 +1,25 @@
+#!/bin/sh
+# Builds build/webappwrap. WebAppWrap's version is the commit it's built from, with "-dirty"
+# when the checkout has uncommitted changes, like the macOS and Windows builds. It goes into
+# build/waw_version.h, which is only rewritten when it changes, so make rebuilds what uses it.
+set -eu
+
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+mkdir -p "$ROOT/build"
+cd "$ROOT/build"
+
+commit="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || true)"
+if [ -z "$commit" ]; then
+  echo "warning: not a git checkout, so this build has no version." >&2
+elif [ -n "$(git -C "$ROOT" status --porcelain 2>/dev/null)" ]; then
+  commit="$commit-dirty"
+fi
+header="#define WAW_COMMIT \"$commit\""
+if [ ! -f waw_version.h ] || [ "$(cat waw_version.h)" != "$header" ]; then
+  printf '%s\n' "$header" > waw_version.h
+fi
+
+qmake6 "$ROOT/webappwrap.pro"
+make -j"$(nproc)"
+
+echo "Built $ROOT/build/webappwrap (version ${commit:-none})"

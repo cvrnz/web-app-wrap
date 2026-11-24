@@ -1,0 +1,25 @@
+pkgname=webappwrap
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Turn a web app into its own desktop app, with tabs'
+arch=('x86_64' 'aarch64')
+url='https://github.com/cvrnz/web-app-wrap'
+license=('custom')
+depends=('qt6-base' 'qt6-declarative' 'qt6-svg' 'qt6-wayland' 'qt6-webengine' 'xdg-desktop-portal' 'xdg-utils')
+makedepends=('gcc' 'make' 'git')
+source=()
+sha256sums=()
+
+build() {
+  cd "$startdir/.."
+  ./scripts/build
+}
+
+package() {
+  cd "$startdir/.."
+  install -Dm755 build/webappwrap "$pkgdir/usr/bin/webappwrap"
+  # The command line is the same program under a shorter name.
+  ln -s webappwrap "$pkgdir/usr/bin/waw"
+  install -Dm644 "$startdir/webappwrap.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/webappwrap.svg"
+  install -Dm644 "$startdir/webappwrap.desktop" "$pkgdir/usr/share/applications/webappwrap.desktop"
+}

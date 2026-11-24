@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=WebAppWrap
+Comment=Turn a web app into its own desktop app, with tabs
+Exec=webappwrap
+Icon=webappwrap
+Terminal=false
+Categories=Network;Utility;
+StartupWMClass=webappwrap
