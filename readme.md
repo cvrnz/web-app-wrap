@@ -18,9 +18,10 @@ Web App Wrap has a window for making apps one at a time, a JSON batch format
 | --- | --- | --- |
 | macOS 13+ | Swift, AppKit, SwiftUI, WKWebView | [macos](macos) |
 | Windows 10 (1809+) and 11 | C# / .NET 10, WinUI 3 (Windows App SDK), WebView2 | [windows](windows) |
+| Linux (Omarchy, or any Wayland desktop with Qt 6.9+) | C++, Qt 6, Qt Quick, Qt WebEngine | [linux](linux) |
 
 Each folder has its own readme with build steps, usage, and the
-command-line reference. Both versions share the same app inputs and JSON
+command-line reference. All versions share the same app inputs and JSON
 format, and route links the same way.
 
 Source code and issues: https://github.com/carlos-ivan-hernandez/web-app-wrap
