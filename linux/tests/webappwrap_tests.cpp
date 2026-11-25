@@ -2,12 +2,15 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QSqlDatabase>
+#include <QSqlQuery>
 #include <QTemporaryDir>
 #include <QtTest>
 
 #include "appbuilder.h"
 #include "appregistry.h"
 #include "batchfile.h"
+#include "browsercookies.h"
 #include "hexcolor.h"
 #include "iconrenderer.h"
 #include "inputnormalizer.h"
@@ -19,6 +22,37 @@
 
 // JSON, HTML and SVG fixtures live in their own header, because moc misreads raw strings.
 #include "fixtures.h"
+
+#include <openssl/evp.h>
+
+namespace {
+
+// Encrypts a cookie value the way Chromium stores it: "v11", then AES-128-CBC with 16 spaces
+// as the IV, of the host's SHA-256 followed by the value.
+QByteArray chromeEncrypt(const QByteArray &value, const QString &host, const QByteArray &password,
+                         const char *prefix = "v11") {
+    const QByteArray key = BrowserCookies::deriveKey(password);
+    const QByteArray plain = QCryptographicHash::hash(host.toUtf8(), QCryptographicHash::Sha256) + value;
+    const QByteArray iv(16, ' ');
+    QByteArray cipher(plain.size() + 16, Qt::Uninitialized);
+    int length = 0, finalLength = 0;
+    EVP_CIPHER_CTX *context = EVP_CIPHER_CTX_new();
+    EVP_EncryptInit_ex(context, EVP_aes_128_cbc(), nullptr, reinterpret_cast<const unsigned char *>(key.constData()),
+                       reinterpret_cast<const unsigned char *>(iv.constData()));
+    EVP_EncryptUpdate(context, reinterpret_cast<unsigned char *>(cipher.data()), &length,
+                      reinterpret_cast<const unsigned char *>(plain.constData()), int(plain.size()));
+    EVP_EncryptFinal_ex(context, reinterpret_cast<unsigned char *>(cipher.data()) + length, &finalLength);
+    EVP_CIPHER_CTX_free(context);
+    cipher.truncate(length + finalLength);
+    return prefix + cipher;
+}
+
+// Chromium's time for a moment: microseconds since 1601-01-01 UTC.
+qint64 chromeTime(const QDateTime &time) {
+    return (time.toMSecsSinceEpoch() + 11644473600000LL) * 1000;
+}
+
+}
 
 class WebAppWrapTests : public QObject {
     Q_OBJECT
@@ -308,6 +342,72 @@ private slots:
         QVERIFY(translator.translate("Main", "Save").isNull());
     }
 
+    void decryptsChromiumCookieValues() {
+        const QByteArray key = BrowserCookies::deriveKey("secret");
+        const QByteArray encrypted = chromeEncrypt("abc123", ".google.com", "secret");
+        QCOMPARE(BrowserCookies::decrypt(encrypted, key, ".google.com", 24), QByteArray("abc123"));
+        // The wrong password, or a value moved to another host, doesn't decrypt.
+        QVERIFY(!BrowserCookies::decrypt(encrypted, BrowserCookies::deriveKey("other"), ".google.com", 24));
+        QVERIFY(!BrowserCookies::decrypt(encrypted, key, ".youtube.com", 24));
+        // v10 values use the fixed password whatever the keyring holds.
+        QCOMPARE(BrowserCookies::decrypt(chromeEncrypt("v", "a.com", "peanuts", "v10"), key, "a.com", 24), QByteArray("v"));
+        QCOMPARE(BrowserCookies::fromChromeTime(11644473600000000LL), QDateTime::fromMSecsSinceEpoch(0, QTimeZone::UTC));
+    }
+
+    void readsACookiesFile() {
+        QTemporaryDir dir;
+        const QString file = dir.filePath("Cookies");
+        {
+            QSqlDatabase database = QSqlDatabase::addDatabase("QSQLITE", "fixture");
+            database.setDatabaseName(file);
+            QVERIFY(database.open());
+            QSqlQuery query(database);
+            QVERIFY(query.exec("CREATE TABLE meta (key TEXT, value TEXT)"));
+            QVERIFY(query.exec("INSERT INTO meta VALUES ('version', '24')"));
+            QVERIFY(query.exec("CREATE TABLE cookies (host_key TEXT, name TEXT, value TEXT, encrypted_value BLOB, "
+                               "path TEXT, expires_utc INTEGER, is_secure INTEGER, is_httponly INTEGER, "
+                               "has_expires INTEGER, samesite INTEGER, top_frame_site_key TEXT)"));
+            const qint64 future = chromeTime(QDateTime::currentDateTimeUtc().addDays(30));
+            const qint64 past = chromeTime(QDateTime::currentDateTimeUtc().addDays(-1));
+            auto add = [&](const QString &host, const QString &name, qint64 expires, bool hasExpires, const QString &partition) {
+                query.prepare("INSERT INTO cookies VALUES (?, ?, '', ?, '/', ?, 1, 1, ?, 0, ?)");
+                query.addBindValue(host);
+                query.addBindValue(name);
+                query.addBindValue(chromeEncrypt(name.toUtf8() + "-value", host, "secret"));
+                query.addBindValue(expires);
+                query.addBindValue(hasExpires ? 1 : 0);
+                query.addBindValue(partition);
+                QVERIFY(query.exec());
+            };
+            add(".google.com", "SID", future, true, "");
+            add("accounts.google.com", "__Host-GAPS", future, true, "");
+            add(".youtube.com", "SESSION", 0, false, "");
+            add(".google.com", "OLD", past, true, "");
+            add(".google.com", "EMBEDDED", future, true, "https://example.com");
+            database.close();
+        }
+        QSqlDatabase::removeDatabase("fixture");
+
+        QString error;
+        const auto cookies = BrowserCookies::readCookiesFile(file, "secret", &error);
+        QVERIFY2(cookies, qPrintable(error));
+        QCOMPARE(cookies->size(), 3); // not the expired or the partitioned one
+        QHash<QByteArray, BrowserCookies::Cookie> byName;
+        for (const auto &cookie : *cookies)
+            byName.insert(cookie.cookie.name(), cookie);
+        QCOMPARE(byName["SID"].cookie.value(), QByteArray("SID-value"));
+        QCOMPARE(byName["SID"].cookie.domain(), QString(".google.com"));
+        QCOMPARE(byName["SID"].origin, QUrl("https://google.com/"));
+        QVERIFY(byName["SID"].cookie.isSecure() && byName["SID"].cookie.isHttpOnly());
+        // A host-only cookie has no domain and is set from its host.
+        QCOMPARE(byName["__Host-GAPS"].cookie.domain(), QString());
+        QCOMPARE(byName["__Host-GAPS"].origin, QUrl("https://accounts.google.com/"));
+        QVERIFY(byName["SESSION"].cookie.isSessionCookie());
+
+        QVERIFY(!BrowserCookies::readCookiesFile(file, "wrong", &error));
+        QVERIFY(error.contains("keyring"));
+    }
+
 private:
     static void writeSvg(const QString &path, const QString &fill) {
         QFile file(path);
@@ -315,6 +415,7 @@ private:
         file.write(QString(svgSquare)
                        .arg(fill).toUtf8());
     }
+
 };
 
 QTEST_MAIN(WebAppWrapTests)

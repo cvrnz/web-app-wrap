@@ -14,9 +14,12 @@
 #include <QProcess>
 #include <QSaveFile>
 #include <QStandardPaths>
+#include <QWebEngineCookieStore>
 #include <QWebEngineNotification>
+#include <QtWebEngineQuick/QQuickWebEngineProfile>
 #include <QWindow>
 
+#include "browsercookies.h"
 #include "notifier.h"
 #include "version.h"
 
@@ -109,6 +112,19 @@ void Runtime::removeAllowedDomain(const QString &domain) {
         saveSettings();
         loadSettings();
     }
+}
+
+QString Runtime::importHeliumCookies(QObject *object) const {
+    auto *profile = qobject_cast<QQuickWebEngineProfile *>(object);
+    if (!profile)
+        return tr("The app has no profile to copy cookies into.");
+    QString error;
+    const auto cookies = BrowserCookies::read(BrowserCookies::helium(), &error);
+    if (!cookies)
+        return error;
+    for (const BrowserCookies::Cookie &cookie : *cookies)
+        profile->cookieStore()->setCookie(cookie.cookie, cookie.origin);
+    return tr("Copied %n cookie(s) from Helium.", "", int(cookies->size()));
 }
 
 void Runtime::setNotificationsEnabled(bool enabled) {

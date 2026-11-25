@@ -59,6 +59,11 @@ public:
     Q_INVOKABLE QString addAllowedDomain(const QString &input);
     Q_INVOKABLE void removeAllowedDomain(const QString &domain);
 
+    // Copies Helium's cookies into `profile` (a WebEngineProfile), so the app is signed in
+    // wherever Helium is. Done at every launch and from the ⋮ menu. A one-way copy: signing in
+    // or out here doesn't reach Helium. Returns what happened, to show.
+    Q_INVOKABLE QString importHeliumCookies(QObject *profile) const;
+
     // A web notification from the profile's presentNotification signal.
     Q_INVOKABLE void presentNotification(QObject *notification);
     Q_INVOKABLE void notifyDownloadFinished(const QString &fileName, const QString &path);

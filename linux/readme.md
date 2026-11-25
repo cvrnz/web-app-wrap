@@ -55,6 +55,18 @@ The **⋮** menu has the page commands above, plus:
 - **Allowed Sites…**: other sites the app may open, each with its subdomains.
   Type a domain (`github.com`) or paste a link and click **Add**. Each app has
   its own list, and changes apply to open tabs straight away.
+- **Copy Cookies from Helium**: copies Helium's cookies into the app again
+  and reloads its tabs, for when you've signed in to something in Helium while
+  the app was open.
+
+Every app copies Helium's cookies each time it opens, before its first page
+loads, so it's signed in wherever Helium is. This is for sites that won't let
+you sign in inside WebAppWrap: Google's sign-in (used by YouTube) says "This
+browser or app may not be secure" for embedded browsers. It's a one-way copy:
+signing in or out in the app doesn't reach Helium, and Helium's cookies replace
+the app's for the same site at the next launch. It reads Helium's "Chromium
+Safe Storage" password from the keyring with `secret-tool`, so the keyring
+must be unlocked; if it can't copy, the app opens with its own cookies.
 
 Launching an app that's already running brings its window forward instead of
 starting a second copy. On Hyprland, WebAppWrap asks Hyprland to focus the

@@ -1,3 +1,4 @@
 {
-  "Build %n App(s)": { "one": "Build %n App", "other": "Build %n Apps" }
+  "Build %n App(s)": { "one": "Build %n App", "other": "Build %n Apps" },
+  "Copied %n cookie(s) from Helium.": { "one": "Copied %n cookie from Helium.", "other": "Copied %n cookies from Helium." }
 }

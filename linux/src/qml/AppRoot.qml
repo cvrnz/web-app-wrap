@@ -65,6 +65,9 @@ QtObject {
         // Qt WebEngine adds "QtWebEngine/<version>" to the browser's user agent, and some sites
         // turn away browsers they don't recognize. Without it, the agent is Chrome's.
         profile.httpUserAgent = profile.httpUserAgent.replace(/\s*QtWebEngine\/\S+/, "")
+        // Start out signed in wherever Helium is, since some sites (Google's sign-in) won't let
+        // you sign in here. Done before the first page loads, so it already sees the cookies.
+        console.info(app.importHeliumCookies(profile))
         newWindow(app.url)
     }
 

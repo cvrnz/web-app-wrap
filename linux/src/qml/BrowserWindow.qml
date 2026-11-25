@@ -80,6 +80,15 @@ ApplicationWindow {
         tabs = list
     }
 
+    // Copies Helium's sign-ins in, then reloads every tab in every window so pages see them.
+    function importHeliumCookies() {
+        const message = app.importHeliumCookies(profile)
+        for (const window of appRoot.windows)
+            for (const view of window.tabs)
+                view.reload()
+        statusMessage.show(message)
+    }
+
     // MARK: Where links go (the same rules as on macOS and Windows)
 
     function handleNewWindow(view, request) {
@@ -321,6 +330,7 @@ ApplicationWindow {
                         onToggled: app.notificationsEnabled = checked
                     }
                     MenuItem { text: qsTr("Allowed Sites…"); onTriggered: allowedSites.open() }
+                    MenuItem { text: qsTr("Copy Cookies from Helium"); onTriggered: win.importHeliumCookies() }
                     MenuSeparator {}
                     MenuItem { text: qsTr("Developer Tools"); onTriggered: win.openDevTools() }
                     MenuItem { text: qsTr("Keyboard Shortcuts"); onTriggered: shortcutsOverlay.open() }
@@ -368,6 +378,39 @@ ApplicationWindow {
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.margins: 8
+    }
+
+    // A short message along the bottom, such as the result of copying cookies.
+    Popup {
+        id: statusMessage
+
+        property string text: ""
+
+        function show(message) {
+            text = message
+            open()
+            hideStatus.restart()
+        }
+
+        x: (parent.width - width) / 2
+        y: parent.height - height - 24
+        padding: 12
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        background: Rectangle {
+            color: Material.dialogColor
+            radius: Math.min(8, theme.radius)
+        }
+        contentItem: Label {
+            text: statusMessage.text
+            wrapMode: Text.WordWrap
+            width: Math.min(implicitWidth, win.width - 64)
+        }
+
+        Timer {
+            id: hideStatus
+            interval: 5000
+            onTriggered: statusMessage.close()
+        }
     }
 
     AllowedSitesDialog {

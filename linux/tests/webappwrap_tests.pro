@@ -1,4 +1,5 @@
-QT += core gui network svg testlib dbus
+QT += core gui network sql svg testlib dbus
+LIBS += -lcrypto
 CONFIG += c++20 testcase
 QMAKE_CXXFLAGS += -Wno-missing-field-initializers
 TARGET = webappwrap_tests
@@ -10,6 +11,7 @@ HEADERS += \
     ../src/appbuilder.h \
     ../src/appregistry.h \
     ../src/batchfile.h \
+    ../src/browsercookies.h \
     ../src/hexcolor.h \
     ../src/iconrenderer.h \
     ../src/inputnormalizer.h \
@@ -26,6 +28,7 @@ SOURCES += \
     ../src/appbuilder.cpp \
     ../src/appregistry.cpp \
     ../src/batchfile.cpp \
+    ../src/browsercookies.cpp \
     ../src/hexcolor.cpp \
     ../src/iconrenderer.cpp \
     ../src/inputnormalizer.cpp \

@@ -1,4 +1,5 @@
-QT += core gui network qml quick quickcontrols2 dbus svg webenginecore webenginequick
+QT += core gui network qml quick quickcontrols2 dbus sql svg webenginecore webenginequick
+LIBS += -lcrypto
 
 CONFIG += c++20 release
 TARGET = webappwrap
@@ -13,6 +14,7 @@ HEADERS += \
     src/applistmodel.h \
     src/appregistry.h \
     src/batchfile.h \
+    src/browsercookies.h \
     src/cli.h \
     src/hexcolor.h \
     src/iconrenderer.h \
@@ -35,6 +37,7 @@ SOURCES += \
     src/applistmodel.cpp \
     src/appregistry.cpp \
     src/batchfile.cpp \
+    src/browsercookies.cpp \
     src/cli.cpp \
     src/hexcolor.cpp \
     src/iconrenderer.cpp \
