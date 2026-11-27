@@ -8,8 +8,7 @@ public struct AppSettings: Codable, Equatable {
     public var url: String
     /// File name in AppRegistry's icons folder. nil draws the default icon.
     public var icon: String?
-    /// For an SVG icon, 0.5–3, where 1 fits the whole SVG in the icon. For other images (icons
-    /// saved before SVG support), 1–3 on top of the automatic zoom that crops off a border.
+    /// 0.5–3, where 1 fits the whole SVG in the icon.
     public var zoom: Double
     /// "#RRGGBB" behind an SVG icon. nil uses HexColor.defaultIconBackground.
     public var iconBackground: String?
@@ -29,6 +28,10 @@ public struct AppSettings: Codable, Equatable {
     }
 
     public var location: AppLocation { AppLocation(name) }
+
+    /// The zoom an SVG icon starts at when none is given: the artwork spans about 60% of the
+    /// icon, which leaves a logo a comfortable margin (assuming the SVG has no padding of its own).
+    public static let defaultSVGZoom = 0.6
 }
 
 /// When an app was last built, by which WebAppWrap, and from which settings.

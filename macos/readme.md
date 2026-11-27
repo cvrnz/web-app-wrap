@@ -187,8 +187,8 @@ whether it's up to date.
      slider's starting point the whole SVG fits in the icon; drag left to shrink
      it and leave more background around it, or right to zoom in and crop.
      Without an SVG, WebAppWrap draws a colored tile with the app name's first
-     letter. (Apps that already have a PNG or other image icon keep it, drawn as
-     before, until you choose an SVG for them.)
+     letter. Icons must be SVGs: an app that still has a PNG or other image
+     icon from an older version shows the letter tile until you choose an SVG.
   3. The **Title bar color**. It's the background of the bar holding the
      window buttons and tabs. After you enter the web address, WebAppWrap fills it in
      with the site's theme color, from its `<meta name="theme-color">` tag or its
@@ -352,8 +352,8 @@ inputs as the window:
 | --- | --- | --- |
 | `name` | yes | App name. It may include folders under the apps folder, as in the window |
 | `url` | yes | Web address |
-| `image` | no | Icon SVG path, relative to the JSON file unless absolute (`~` works). Without it, WebAppWrap draws the default icon. Other images such as PNG still work as before: cropped to fill the icon, with no background |
-| `zoom` | no | 0.5–3. At 1 the whole SVG fits in the icon; lower zooms out, higher zooms in. Defaults to 1. For other images, 1–3 on top of the automatic zoom that crops off a border |
+| `image` | no | Icon SVG path, relative to the JSON file unless absolute (`~` works). Without it, WebAppWrap draws the default icon. Must be an SVG |
+| `zoom` | no | 0.5–3. At 1 the whole SVG fits in the icon; lower zooms out, higher zooms in. Defaults to 0.6 |
 | `iconBackground` | no | The color behind the SVG, for example `"#ffffff"`. Defaults to `#1C1C1C` |
 | `iconColor` | no | Fills the whole SVG with one color, for example `"#e5e5e5"`. Without it, the SVG keeps its own colors |
 | `titleBarColor` | no | For example `"#1a1a1a"`. Defaults to the site's theme color |

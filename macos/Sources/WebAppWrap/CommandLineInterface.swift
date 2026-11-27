@@ -15,10 +15,7 @@ enum CommandLineInterface {
           The SVG is drawn on --icon-background (default #1C1C1C). --icon-color fills
           the whole SVG with one color (e.g. #E5E5E5); without it the SVG keeps its
           own colors. At --zoom 1 the whole SVG fits in the icon; lower zooms out,
-          higher zooms in.
-          Other images (PNG and so on) still work as before: cropped to fill the
-          icon, with --zoom 1-3 on top of an automatic zoom that crops off their
-          border, unless --no-auto-zoom.
+          higher zooms in (default 0.6). Icons must be SVGs.
           The title bar color defaults to the site's theme color.
           --out is the folder apps go in (default: the folder chosen in WebAppWrap's
           Settings, or /Applications).
@@ -69,6 +66,7 @@ enum CommandLineInterface {
             return .generated(name: name, symbol: value("--symbol", in: options))
         }
         let url = URL(fileURLWithPath: (imagePath as NSString).expandingTildeInPath)
+        guard IconSource.isSVG(url) else { throw UsageError(message: "--image must be an SVG file.") }
         var background: HexColor?
         if let raw = value("--icon-background", in: options) {
             guard let parsed = HexColor(hex: raw) else { throw UsageError(message: "--icon-background must look like #1C1C1C.") }
@@ -79,14 +77,9 @@ enum CommandLineInterface {
             guard let parsed = HexColor(hex: raw) else { throw UsageError(message: "--icon-color must look like #E5E5E5.") }
             color = parsed
         }
-        let zoom = value("--zoom", in: options).flatMap(Double.init) ?? 1
+        let zoom = value("--zoom", in: options).flatMap(Double.init) ?? AppSettings.defaultSVGZoom
         guard let icon = IconSource.load(url, zoom: zoom, background: background, color: color) else {
-            throw UsageError(message: "Couldn’t read an image from \(imagePath).")
-        }
-        // --no-auto-zoom: use a non-SVG image as it is, border and all.
-        if options.contains("--no-auto-zoom"), case let .image(image, _) = icon {
-            let extra = min(max(CGFloat(zoom), IconSource.userZoomRange.lowerBound), IconSource.userZoomRange.upperBound)
-            return .image(image, zoom: extra)
+            throw UsageError(message: "Couldn’t read the SVG \(imagePath).")
         }
         return icon
     }

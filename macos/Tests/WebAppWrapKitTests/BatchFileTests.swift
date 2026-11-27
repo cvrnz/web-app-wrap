@@ -36,19 +36,33 @@ final class BatchFileTests: XCTestCase {
     func testMinimalEntryUsesDefaults() throws {
         let entry = try parse(#"[{"name": "Linear", "url": "linear.app"}]"#)[0]
         XCTAssertNil(entry.image)
-        XCTAssertEqual(entry.zoom, 1)
+        XCTAssertEqual(entry.zoom, 0.6)
         XCTAssertNil(entry.iconBackground)
         XCTAssertNil(entry.iconColor)
         XCTAssertNil(entry.titleBarColor)
     }
 
+    func testDefaultZoomIsPointSix() throws {
+        let entries = try parse(##"""
+        [{"name": "A", "url": "a.com", "image": "a.svg"},
+         {"name": "B", "url": "b.com", "image": "b.SVG"},
+         {"name": "C", "url": "c.com", "image": "c.svg", "zoom": 1}]
+        """##)
+        XCTAssertEqual(entries.map(\.zoom), [0.6, 0.6, 1])
+    }
+
+    func testImageMustBeSVG() {
+        let message = errorMessage(#"[{"name": "A", "url": "a.com", "image": "a.png"}]"#)
+        XCTAssertTrue(message.contains("“image” must be an SVG file"), message)
+    }
+
     func testAbsoluteAndParentImagePaths() throws {
         let entries = try parse(#"""
-        [{"name": "A", "url": "a.com", "image": "/tmp/a.png"},
-         {"name": "B", "url": "b.com", "image": "../shared/b.png"}]
+        [{"name": "A", "url": "a.com", "image": "/tmp/a.svg"},
+         {"name": "B", "url": "b.com", "image": "../shared/b.svg"}]
         """#)
-        XCTAssertEqual(entries[0].image?.path, "/tmp/a.png")
-        XCTAssertEqual(entries[1].image?.path, "/Users/me/shared/b.png")
+        XCTAssertEqual(entries[0].image?.path, "/tmp/a.svg")
+        XCTAssertEqual(entries[1].image?.path, "/Users/me/shared/b.svg")
     }
 
     func testReadsJSONC() throws {

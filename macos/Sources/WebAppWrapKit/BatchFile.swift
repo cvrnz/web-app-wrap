@@ -16,10 +16,9 @@ import Foundation
 ///
 /// Only `name` and `url` are required. `name` may include folders, as in the window.
 /// `image` is a path, relative to the batch file unless absolute (`~` works). An SVG is drawn on
-/// `iconBackground` (default #1C1C1C), and `zoom` (0.5–3) scales it, where 1 fits the whole SVG.
-/// `iconColor` fills the whole SVG with one color; without it the SVG keeps its own colors.
-/// Other images are cropped to fill the icon as before SVG support, and `zoom` (1–3) is on top
-/// of the automatic zoom that crops off a border.
+/// `iconBackground` (default #1C1C1C), and `zoom` (0.5–3, default 0.6) scales it, where 1 fits
+/// the whole SVG. `iconColor` fills the whole SVG with one color; without it the SVG keeps its
+/// own colors. Icons must be SVGs.
 /// `titleBarColor` defaults to the site's theme color.
 /// The file may be JSON, JSONC or JSON5 (comments, trailing commas, unquoted keys and so on).
 public struct BatchEntry: Equatable {
@@ -48,7 +47,7 @@ public enum BatchFile {
         public var errorDescription: String? { message }
     }
 
-    /// 0.5–1 only zooms out an SVG; other images can't zoom out past 1.
+    /// Below 1 zooms the SVG out, above 1 zooms in.
     public static let zoomRange: ClosedRange<Double> = 0.5...3
 
     /// File extensions offered when choosing a batch file.
@@ -104,7 +103,11 @@ public enum BatchFile {
                 }
             }
 
-            var zoom = 1.0
+            if let image, image.pathExtension.lowercased() != "svg" {
+                entryProblems.append("“image” must be an SVG file")
+            }
+
+            var zoom = AppSettings.defaultSVGZoom
             if let value = object["zoom"], !(value is NSNull) {
                 if let number = (value as? Double) ?? (value as? Int).map(Double.init), zoomRange.contains(number) {
                     zoom = number

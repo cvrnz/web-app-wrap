@@ -115,11 +115,10 @@ struct HelpView: View {
                 options: [
                     .init("--name", "App name. May include folders, e.g. \"WebAppWrap/Photos\". Required."),
                     .init("--url", "Web address. https:// is added if missing. Required."),
-                    .init("--image", "Icon SVG. Without it, a colored tile with the name’s first letter is drawn. Other images such as PNG still work as before: cropped to fill the icon."),
-                    .init("--zoom", "0.5–3. At 1 the whole SVG fits in the icon; lower zooms out, higher zooms in. Default 1. (For other images: 1–3, on top of the automatic border crop.)"),
+                    .init("--image", "Icon SVG (SVG only). Without it, a colored tile with the name’s first letter is drawn."),
+                    .init("--zoom", "0.5–3. At 1 the whole SVG fits in the icon; lower zooms out, higher zooms in. Default 0.6."),
                     .init("--icon-background", "Hex color behind the SVG. Default #1C1C1C."),
                     .init("--icon-color", "Fill the whole SVG with this hex color, e.g. #E5E5E5. Without it the SVG keeps its own colors."),
-                    .init("--no-auto-zoom", "For other images: use the image as it is, without cropping off its border."),
                     .init("--title-bar-color", "Hex color such as #1a1a1a. Default: the site’s theme color."),
                     .init("--out", "Folder the app (and any folders in its name) go in. Defaults to the folder chosen in Settings, or /Applications."),
                 ],

@@ -44,10 +44,10 @@ struct AppForm: View {
                         .controlSize(.small)
                     Image(systemName: "plus.magnifyingglass").foregroundStyle(.secondary)
                 }
-                .help(draft.imageIsSVG ? "Zoom the SVG out or in" : "Zoom in on the image")
+                .help("Zoom the SVG out or in")
             }
 
-            if draft.customImage != nil, draft.imageIsSVG {
+            if draft.customImage != nil {
                 HStack(spacing: 6) {
                     ColorPicker("Background", selection: $draft.iconBackground, supportsOpacity: false)
                     Text(draft.iconBackgroundHex.hexString)

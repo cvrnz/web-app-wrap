@@ -142,8 +142,8 @@ final class BuilderModel: ObservableObject {
             url: url.absoluteString,
             icon: icon,
             zoom: icon == nil ? 1 : draft.imageZoom,
-            iconBackground: icon != nil && draft.imageIsSVG ? draft.iconBackgroundHex.hexString : nil,
-            iconColor: icon != nil && draft.imageIsSVG ? draft.svgColorHex?.hexString : nil,
+            iconBackground: icon != nil ? draft.iconBackgroundHex.hexString : nil,
+            iconColor: icon != nil ? draft.svgColorHex?.hexString : nil,
             titleBarColor: draft.chosenTitleBarColor?.hexString
         )
     }

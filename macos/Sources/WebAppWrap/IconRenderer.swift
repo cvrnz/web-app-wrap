@@ -9,34 +9,22 @@ enum IconSource {
     /// below 1 it shrinks, above 1 it grows and is cropped, staying centered. With `color`,
     /// every visible part of the SVG is filled with that one color; nil keeps its own colors.
     case svg(NSImage, zoom: CGFloat = 1, background: HexColor = .defaultIconBackground, color: HexColor? = nil)
-    /// Any other image (icons saved before SVG support), cropped to fill the rounded-square
-    /// icon shape. `zoom` > 1 crops in further, keeping the image centered.
-    case image(NSImage, zoom: CGFloat = 1)
 
     /// How far the user can zoom an SVG out and in.
     static let svgZoomRange: ClosedRange<CGFloat> = 0.5...3
-    /// How far the user can zoom other images in, on top of the automatic zoom that crops off a border.
-    static let userZoomRange: ClosedRange<CGFloat> = 1...3
-    /// The furthest the automatic zoom will go looking for the edge of the artwork.
-    static let maximumAutomaticZoom: CGFloat = 3
 
     static func isSVG(_ url: URL) -> Bool {
         url.pathExtension.lowercased() == "svg"
     }
 
-    /// Reads an image file the way the window draws it: an SVG on `background` (default
-    /// #1C1C1C), in `color` if given, and anything else with the automatic border crop. `zoom`
-    /// is the user's zoom. Nil if macOS can't read the file.
-    static func load(_ url: URL, zoom: Double = 1, background: HexColor? = nil, color: HexColor? = nil) -> IconSource? {
-        guard let image = NSImage(contentsOf: url), image.isValid,
+    /// Reads an SVG the way the window draws it: on `background` (default #1C1C1C), in `color`
+    /// if given, at `zoom`. Icons are SVG only: nil for any other file, or if macOS can't read it.
+    static func load(_ url: URL, zoom: Double = AppSettings.defaultSVGZoom, background: HexColor? = nil, color: HexColor? = nil) -> IconSource? {
+        guard isSVG(url), let image = NSImage(contentsOf: url), image.isValid,
               image.size.width > 0, image.size.height > 0
         else { return nil }
-        if isSVG(url) {
-            let zoom = min(max(CGFloat(zoom), svgZoomRange.lowerBound), svgZoomRange.upperBound)
-            return .svg(image, zoom: zoom, background: background ?? .defaultIconBackground, color: color)
-        }
-        let zoom = min(max(CGFloat(zoom), userZoomRange.lowerBound), userZoomRange.upperBound)
-        return .image(image, zoom: IconRenderer.automaticZoom(for: image) * zoom)
+        let zoom = min(max(CGFloat(zoom), svgZoomRange.lowerBound), svgZoomRange.upperBound)
+        return .svg(image, zoom: zoom, background: background ?? .defaultIconBackground, color: color)
     }
 }
 
@@ -134,88 +122,6 @@ enum IconRenderer {
         return file
     }
 
-    // MARK: - Automatic zoom
-
-    /// The smallest zoom at which the icon shape shows only the image's artwork, not its
-    /// background. The background is whatever the four corners share: transparency, or one
-    /// solid color such as a white border around an already-rounded icon. Returns 1 for
-    /// images with no shared corner color, or when no zoom up to the maximum gets clear of it
-    /// (e.g. a small logo on a white page), since cropping wouldn't help there.
-    static func automaticZoom(for image: NSImage) -> CGFloat {
-        guard let source = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return 1 }
-
-        // Analyze at up to 1024 px on the long side.
-        let factor = min(1, 1024 / CGFloat(max(source.width, source.height, 1)))
-        let width = max(1, Int(CGFloat(source.width) * factor))
-        let height = max(1, Int(CGFloat(source.height) * factor))
-        guard let context = CGContext(
-            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-            space: sRGB, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return 1 }
-        context.interpolationQuality = .high
-        context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
-        guard let data = context.data else { return 1 }
-
-        let bytesPerRow = context.bytesPerRow
-        let pixels = data.bindMemory(to: UInt8.self, capacity: bytesPerRow * height)
-        func rgba(_ x: Int, _ y: Int) -> (r: Int, g: Int, b: Int, a: Int) {
-            let offset = y * bytesPerRow + x * 4
-            return (Int(pixels[offset]), Int(pixels[offset + 1]), Int(pixels[offset + 2]), Int(pixels[offset + 3]))
-        }
-        func distance(_ p: (r: Int, g: Int, b: Int, a: Int), _ q: (r: Int, g: Int, b: Int, a: Int)) -> Int {
-            max(abs(p.r - q.r), abs(p.g - q.g), abs(p.b - q.b), abs(p.a - q.a))
-        }
-        func similar(_ p: (r: Int, g: Int, b: Int, a: Int), _ q: (r: Int, g: Int, b: Int, a: Int)) -> Bool {
-            distance(p, q) <= 24
-        }
-
-        let corners = [rgba(0, 0), rgba(width - 1, 0), rgba(0, height - 1), rgba(width - 1, height - 1)]
-        let corner = corners[0]
-        let cornerIsTransparent = corners.allSatisfy { $0.a < 128 }
-        guard cornerIsTransparent || corners.allSatisfy({ similar($0, corner) }) else { return 1 }
-
-        // Anything within ~40% of the corner color counts as border, which also catches the
-        // anti-aliased ring and any soft shadow where the border meets the artwork.
-        let cutoff = 100
-        func isBackground(_ x: Int, _ y: Int) -> Bool {
-            let pixel = rgba(x, y)
-            return pixel.a < 128 || (!cornerIsTransparent && distance(pixel, corner) < cutoff)
-        }
-
-        // The tile is aspect-filled, so at zoom 1 it spans half the shorter side around the center.
-        let centerX = CGFloat(width) / 2, centerY = CGFloat(height) / 2
-        let halfExtent = CGFloat(min(width, height)) / 2
-
-        // Points on and just outside the icon outline (same superellipse as `squircle`), as unit offsets.
-        let outline: [CGPoint] = [1.0, 1.02].flatMap { radius in
-            (0..<720).map { step in
-                let angle = CGFloat(step) / 720 * 2 * .pi
-                let c = cos(angle), s = sin(angle)
-                return CGPoint(x: radius * copysign(pow(abs(c), 2 / 5), c), y: radius * copysign(pow(abs(s), 2 / 5), s))
-            }
-        }
-        func isClear(at zoom: CGFloat) -> Bool {
-            let reach = halfExtent / zoom
-            for point in outline {
-                let x = min(width - 1, max(0, Int(centerX + point.x * reach)))
-                let y = min(height - 1, max(0, Int(centerY - point.y * reach)))
-                if isBackground(x, y) { return false }
-            }
-            return true
-        }
-
-        let maximum = IconSource.maximumAutomaticZoom
-        if isClear(at: 1) { return 1 }
-        guard isClear(at: maximum) else { return 1 }
-        var low: CGFloat = 1, high = maximum
-        for _ in 0..<20 {
-            let middle = (low + high) / 2
-            if isClear(at: middle) { high = middle } else { low = middle }
-        }
-        // A little extra so no faint line survives at small icon sizes.
-        return min(maximum, high * 1.02)
-    }
-
     // MARK: - Drawing (in 1024pt canvas coordinates)
 
     private static func draw(_ source: IconSource, in context: CGContext, scale: CGFloat) {
@@ -249,12 +155,6 @@ enum IconRenderer {
                 context.restoreGState()
             }
 
-        case let .image(image, zoom):
-            let zoom = max(zoom, 1)
-            let grow = tileRect.width * (zoom - 1) / 2
-            drawTile(in: context, scale: scale) {
-                drawImage(image, in: tileRect.insetBy(dx: -grow, dy: -grow), fill: true)
-            }
         }
     }
 

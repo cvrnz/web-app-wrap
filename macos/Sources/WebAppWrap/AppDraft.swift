@@ -25,10 +25,8 @@ final class AppDraft: ObservableObject {
     @Published private(set) var titleBarColor = Color(nsColor: AppDraft.nsColor(.defaultTitleBar))
     @Published private(set) var titleBarColorSource = TitleBarColorSource.standard
     private var themeColorLookup: Task<Void, Never>?
-    /// The user's zoom. For an SVG, 1 fits the whole SVG in the icon. For an older image, it's on
-    /// top of `baseZoom`, and 1 is just enough to crop off the image's border.
-    @Published var imageZoom: Double = 1
-    @Published private(set) var baseZoom: CGFloat = 1
+    /// The user's zoom: at 1 the whole SVG fits in the icon.
+    @Published var imageZoom: Double = AppSettings.defaultSVGZoom
     @Published private(set) var customImage: NSImage?
     /// The file `customImage` came from. Saving copies it into WebAppWrap's icons folder.
     @Published private(set) var imageURL: URL?
@@ -46,8 +44,9 @@ final class AppDraft: ObservableObject {
     init(settings: AppSettings, iconURL: URL?) {
         displayName = settings.name
         urlString = settings.url
-        // An app saved before SVG support may still have another kind of image; keep it working.
-        if let iconURL, loadImage(from: iconURL, svgOnly: false) {
+        // An icon that isn't an SVG (saved before icons were SVG only) isn't loaded; the app
+        // gets the letter tile until an SVG is chosen.
+        if let iconURL, loadImage(from: iconURL) {
             imageFileName = "Current icon"
         }
         imageZoom = settings.zoom
@@ -75,8 +74,7 @@ final class AppDraft: ObservableObject {
 
     var iconSource: IconSource {
         if let customImage {
-            if imageIsSVG { return .svg(customImage, zoom: CGFloat(imageZoom), background: iconBackgroundHex, color: svgColorHex) }
-            return .image(customImage, zoom: baseZoom * CGFloat(imageZoom))
+            return .svg(customImage, zoom: CGFloat(imageZoom), background: iconBackgroundHex, color: svgColorHex)
         }
         return trimmedName.isEmpty ? .generated(name: "", symbol: "globe") : .generated(name: trimmedName)
     }
@@ -88,12 +86,8 @@ final class AppDraft: ObservableObject {
 
     // MARK: - Icon image
 
-    /// False only for an app saved before SVG support that still uses another kind of image.
-    var imageIsSVG: Bool { imageURL.map(IconSource.isSVG) ?? false }
-
     var zoomRange: ClosedRange<Double> {
-        let range = imageIsSVG ? IconSource.svgZoomRange : IconSource.userZoomRange
-        return Double(range.lowerBound)...Double(range.upperBound)
+        Double(IconSource.svgZoomRange.lowerBound)...Double(IconSource.svgZoomRange.upperBound)
     }
 
     /// The picked icon background as sRGB hex.
@@ -111,26 +105,23 @@ final class AppDraft: ObservableObject {
         loadImage(from: url)
     }
 
-    /// Loads an icon file. New icons must be SVGs; `svgOnly: false` also takes the other images
-    /// apps saved before SVG support may have.
+    /// Loads an icon file. Icons must be SVGs.
     @discardableResult
-    func loadImage(from url: URL?, svgOnly: Bool = true) -> Bool {
+    func loadImage(from url: URL?) -> Bool {
         guard let url else { return false }
-        let isSVG = IconSource.isSVG(url)
-        if svgOnly, !isSVG {
+        guard IconSource.isSVG(url) else {
             imageError = "Choose an SVG file."
             return false
         }
         guard let image = NSImage(contentsOf: url), image.isValid, image.size.width > 0, image.size.height > 0 else {
-            imageError = isSVG ? "macOS couldn’t read that SVG." : "That file isn’t an image macOS can read."
+            imageError = "macOS couldn’t read that SVG."
             return false
         }
         customImage = image
         imageURL = url
         imageFileName = url.lastPathComponent
         imageError = nil
-        baseZoom = isSVG ? 1 : IconRenderer.automaticZoom(for: image)
-        imageZoom = 1
+        imageZoom = AppSettings.defaultSVGZoom
         return true
     }
 
